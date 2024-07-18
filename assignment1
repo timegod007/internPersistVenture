@@ -1,0 +1,70 @@
+const {
+    Connection,
+    PublicKey,
+    clusterApiUrl,
+    Keypair,
+    Transaction,
+    SystemProgram,
+    sendAndConfirmTransaction
+} = require('@solana/web3.js');
+const {
+    getOrCreateAssociatedTokenAccount,
+    transfer,
+    getAccount,
+    createMint,
+    mintTo,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+} = require('@solana/spl-token');
+
+
+const secret = new Uint8Array([/* Secret Key Array */]);
+const userKeypair = Keypair.fromSecretKey(secret);
+
+async function main() {
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    const SOL_MINT_ADDRESS = new PublicKey('So11111111111111111111111111111111111111112');
+    const DOGWIFHAT_MINT_ADDRESS = new PublicKey('EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm');
+
+    const solTokenAccount = await getOrCreateAssociatedTokenAccount(
+        connection,
+        userKeypair,
+        SOL_MINT_ADDRESS,
+        userKeypair.publicKey
+    );
+
+    const dogwifhatTokenAccount = await getOrCreateAssociatedTokenAccount(
+        connection,
+        userKeypair,
+        DOGWIFHAT_MINT_ADDRESS,
+        userKeypair.publicKey
+    );
+
+    
+    const amountToSwap = 1000000; //Example
+
+    const transaction = new Transaction().add(
+        transfer(
+            solTokenAccount.address, // Source account
+            dogwifhatTokenAccount.address, // Destination account
+            userKeypair.publicKey, // Owner of the source account
+            amountToSwap,
+            [], // Signers if any
+            TOKEN_PROGRAM_ID
+        )
+    );
+
+    // Send transaction
+    const signature = await sendAndConfirmTransaction(connection, transaction, [userKeypair]);
+    console.log('Transaction Signature:', signature);
+
+    // Verify the swap
+    const solBalance = await connection.getTokenAccountBalance(solTokenAccount.address);
+    const dogwifhatBalance = await connection.getTokenAccountBalance(dogwifhatTokenAccount.address);
+    console.log('SOL Token Balance:', solBalance.value.uiAmount);
+    console.log('Dogwifhat Token Balance:', dogwifhatBalance.value.uiAmount);
+}
+
+main().catch(err => {
+    console.error(err);
+});
